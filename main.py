@@ -30,6 +30,7 @@ class NotepadApp:
         self.root.minsize(600, 400)
 
         self.current_file: str | None = None
+        self.is_modified: bool = False
 
         self.current_theme: dict = self.LIGHT_THEME
         self._build_menu()
@@ -37,6 +38,7 @@ class NotepadApp:
         self._build_statusbar()
         self._bind_shortcuts()
         self._apply_theme()
+        self.root.protocol("WM_DELETE_WINDOW", self.on_exit)
 
 
     def _build_menu(self):
@@ -82,16 +84,22 @@ class NotepadApp:
         self.text.config(yscrollcommand=scroll.set)
         self.text.bind("<KeyRelease>", lambda e: self._update_status())
         self.text.bind("<ButtonRelease-1>", lambda e: self._update_status())
+        self.text.bind("<<Modified>>", self._on_modified)
 
     #вызов окна при создании нового файла
     def new_file(self):
+        if not self._confirm_discard():
+            return
         self.text.delete("1.0", tk.END)
         self.current_file = None
         self.root.title("Graphical Notepad")
         self._update_status()
+        self.is_modified = False
 
     #программируем кнопку открытия нового файла
     def open_file(self):
+        if not self._confirm_discard():
+            return
         path = filedialog.askopenfilename(
             filetypes=[("Текстовые файлы", "*.txt"), ("Все файлы", "*.*")]
         )
@@ -109,6 +117,7 @@ class NotepadApp:
         self.current_file = path
         self.root.title(f"{os.path.basename(path)} — Graphical Notepad")
         self._update_status()
+        self.is_modified = False
 
     # программируем кнопки сохранения файла
     def save_file(self):
@@ -136,6 +145,7 @@ class NotepadApp:
             return False
         self.current_file = path
         self.root.title(f"{os.path.basename(path)} — Graphical Notepad")
+        self.is_modified = False
         return True
 
     #добавляем бинды
@@ -251,6 +261,28 @@ class NotepadApp:
         self.text.configure(bg=t["bg"], fg=t["fg"], insertbackground=t["insert"],
                             selectbackground=t["select_bg"])
         self.status.configure(bg=t["status_bg"], fg=t["status_fg"])
+
+    def _on_modified(self, event=None):
+        if self.text.edit_modified():
+            self.is_modified = True
+            self.text.edit_modified(False)
+
+    def _confirm_discard(self) -> bool:
+        if not self.is_modified:
+            return True
+        answer = messagebox.askyesnocancel(
+            "Несохранённые изменения",
+            "Сохранить изменения перед продолжением?"
+        )
+        if answer is None:
+            return False
+        if answer:
+            return self.save_file()
+        return True
+
+    def on_exit(self):
+        if self._confirm_discard():
+            self.root.destroy()
 
 if __name__ == "__main__":
     root = tk.Tk()
