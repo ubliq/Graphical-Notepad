@@ -4,6 +4,25 @@ import os
 
 
 class NotepadApp:
+
+    #добавляем темы
+    LIGHT_THEME = {
+        "bg": "#ffffff",
+        "fg": "#1e1e1e",
+        "insert": "#000000",
+        "status_bg": "#f0f0f0",
+        "status_fg": "#333333",
+        "select_bg": "#cce5ff",
+    }
+    DARK_THEME = {
+        "bg": "#1e1e1e",
+        "fg": "#e0e0e0",
+        "insert": "#ffffff",
+        "status_bg": "#2d2d2d",
+        "status_fg": "#cccccc",
+        "select_bg": "#3a5f8a",
+    }
+
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("Graphical Notepad")
@@ -12,10 +31,12 @@ class NotepadApp:
 
         self.current_file: str | None = None
 
+        self.current_theme: dict = self.LIGHT_THEME
         self._build_menu()
         self._build_editor()
         self._build_statusbar()
         self._bind_shortcuts()
+        self._apply_theme()
 
 
     def _build_menu(self):
@@ -41,6 +62,11 @@ class NotepadApp:
         edit_menu.add_separator()
         edit_menu.add_command(label="Найти и заменить... Ctrl+F", command=self.open_find_window)
         menubar.add_cascade(label="Правка", menu=edit_menu)
+
+        view_menu = tk.Menu(menubar, tearoff=0)
+        view_menu.add_command(label="Светлая тема", command=lambda: self.set_theme("light"))
+        view_menu.add_command(label="Тёмная тема", command=lambda: self.set_theme("dark"))
+        menubar.add_cascade(label="Вид", menu=view_menu)
 
         self.root.config(menu=menubar)
 
@@ -112,6 +138,7 @@ class NotepadApp:
         self.root.title(f"{os.path.basename(path)} — Graphical Notepad")
         return True
 
+    #добавляем бинды
     def _bind_shortcuts(self):
         self.root.bind_all("<Control-n>", lambda e: self.new_file())
         self.root.bind_all("<Control-o>", lambda e: self.open_file())
@@ -121,6 +148,7 @@ class NotepadApp:
         self.root.bind_all("<Control-y>", lambda e: self.redo())
         self.root.bind_all("<Control-f>", lambda e: self.open_find_window())
 
+    # тут я думаю объяснять не стоит
     def undo(self):
         try:
             self.text.edit_undo()
@@ -133,6 +161,7 @@ class NotepadApp:
         except tk.TclError:
             pass
 
+    # добавляем счётчик
     def _build_statusbar(self):
         self.status = tk.Label(self.root, text="Строка 1, Столбец 1 | Символов: 0",
                                anchor="w", padx=8, pady=4)
@@ -144,6 +173,7 @@ class NotepadApp:
         chars = len(self.text.get("1.0", "end-1c"))
         self.status.config(text=f"Строка {line}, Столбец {int(col)+1} | Символов: {chars}")
 
+    # добавляем поиск и замену
     def open_find_window(self):
         win = tk.Toplevel(self.root)
         win.title("Поиск и замена")
@@ -211,6 +241,16 @@ class NotepadApp:
         tk.Button(btn_frame, text="Заменить", command=replace_one).pack(side=tk.LEFT, padx=4)
         tk.Button(btn_frame, text="Заменить всё", command=replace_all).pack(side=tk.LEFT, padx=4)
 
+    def set_theme(self, name: str):
+        self.current_theme = self.DARK_THEME if name == "dark" else self.LIGHT_THEME
+        self._apply_theme()
+
+    def _apply_theme(self):
+        t = self.current_theme
+        self.root.configure(bg=t["bg"])
+        self.text.configure(bg=t["bg"], fg=t["fg"], insertbackground=t["insert"],
+                            selectbackground=t["select_bg"])
+        self.status.configure(bg=t["status_bg"], fg=t["status_fg"])
 
 if __name__ == "__main__":
     root = tk.Tk()
