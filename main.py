@@ -14,7 +14,9 @@ class NotepadApp:
 
         self._build_menu()
         self._build_editor()
+        self._build_statusbar()
         self._bind_shortcuts()
+
 
     def _build_menu(self):
         menubar = tk.Menu(self.root)
@@ -50,12 +52,15 @@ class NotepadApp:
         scroll = tk.Scrollbar(frame, command=self.text.yview)
         scroll.pack(side=tk.RIGHT, fill=tk.Y)
         self.text.config(yscrollcommand=scroll.set)
+        self.text.bind("<KeyRelease>", lambda e: self._update_status())
+        self.text.bind("<ButtonRelease-1>", lambda e: self._update_status())
 
     #вызов окна при создании нового файла
     def new_file(self):
         self.text.delete("1.0", tk.END)
         self.current_file = None
         self.root.title("Graphical Notepad")
+        self._update_status()
 
     #программируем кнопку открытия нового файла
     def open_file(self):
@@ -75,6 +80,7 @@ class NotepadApp:
         self.text.insert("1.0", content)
         self.current_file = path
         self.root.title(f"{os.path.basename(path)} — Graphical Notepad")
+        self._update_status()
 
     # программируем кнопки сохранения файла
     def save_file(self):
@@ -123,6 +129,17 @@ class NotepadApp:
             self.text.edit_redo()
         except tk.TclError:
             pass
+
+    def _build_statusbar(self):
+        self.status = tk.Label(self.root, text="Строка 1, Столбец 1 | Символов: 0",
+                               anchor="w", padx=8, pady=4)
+        self.status.pack(fill=tk.X, side=tk.BOTTOM)
+
+    def _update_status(self):
+        idx = self.text.index(tk.INSERT)
+        line, col = idx.split(".")
+        chars = len(self.text.get("1.0", "end-1c"))
+        self.status.config(text=f"Строка {line}, Столбец {int(col)+1} | Символов: {chars}")
 
 
 if __name__ == "__main__":
