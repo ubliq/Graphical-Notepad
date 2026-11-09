@@ -14,17 +14,29 @@ class NotepadApp:
 
         self._build_menu()
         self._build_editor()
+        self._bind_shortcuts()
 
     def _build_menu(self):
         menubar = tk.Menu(self.root)
 
-        #добавляем кнопки
         file_menu = tk.Menu(menubar, tearoff=0)
-        file_menu.add_command(label="Новый", command=self.new_file)
-        file_menu.add_command(label="Открыть...", command=self.open_file)
-        file_menu.add_command(label="Сохранить", command=self.save_file)
-        file_menu.add_command(label="Сохранить как...", command=self.save_as_file)
+        file_menu.add_command(label="Новый       Ctrl+N", command=self.new_file)
+        file_menu.add_command(label="Открыть...  Ctrl+O", command=self.open_file)
+        file_menu.add_command(label="Сохранить   Ctrl+S", command=self.save_file)
+        file_menu.add_command(label="Сохранить как... Ctrl+Shift+S", command=self.save_as_file)
         menubar.add_cascade(label="Файл", menu=file_menu)
+
+        edit_menu = tk.Menu(menubar, tearoff=0)
+        edit_menu.add_command(label="Отменить    Ctrl+Z", command=self.undo)
+        edit_menu.add_command(label="Повторить   Ctrl+Y", command=self.redo)
+        edit_menu.add_separator()
+        edit_menu.add_command(label="Вырезать    Ctrl+X",
+                              command=lambda: self.text.event_generate("<<Cut>>"))
+        edit_menu.add_command(label="Копировать  Ctrl+C",
+                              command=lambda: self.text.event_generate("<<Copy>>"))
+        edit_menu.add_command(label="Вставить    Ctrl+V",
+                              command=lambda: self.text.event_generate("<<Paste>>"))
+        menubar.add_cascade(label="Правка", menu=edit_menu)
 
         self.root.config(menu=menubar)
 
@@ -91,6 +103,26 @@ class NotepadApp:
         self.current_file = path
         self.root.title(f"{os.path.basename(path)} — Graphical Notepad")
         return True
+
+    def _bind_shortcuts(self):
+        self.root.bind_all("<Control-n>", lambda e: self.new_file())
+        self.root.bind_all("<Control-o>", lambda e: self.open_file())
+        self.root.bind_all("<Control-s>", lambda e: self.save_file())
+        self.root.bind_all("<Control-S>", lambda e: self.save_as_file())
+        self.root.bind_all("<Control-z>", lambda e: self.undo())
+        self.root.bind_all("<Control-y>", lambda e: self.redo())
+
+    def undo(self):
+        try:
+            self.text.edit_undo()
+        except tk.TclError:
+            pass
+
+    def redo(self):
+        try:
+            self.text.edit_redo()
+        except tk.TclError:
+            pass
 
 
 if __name__ == "__main__":
