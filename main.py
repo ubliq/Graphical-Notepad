@@ -38,6 +38,8 @@ class NotepadApp:
                               command=lambda: self.text.event_generate("<<Copy>>"))
         edit_menu.add_command(label="Вставить    Ctrl+V",
                               command=lambda: self.text.event_generate("<<Paste>>"))
+        edit_menu.add_separator()
+        edit_menu.add_command(label="Найти и заменить... Ctrl+F", command=self.open_find_window)
         menubar.add_cascade(label="Правка", menu=edit_menu)
 
         self.root.config(menu=menubar)
@@ -117,6 +119,7 @@ class NotepadApp:
         self.root.bind_all("<Control-S>", lambda e: self.save_as_file())
         self.root.bind_all("<Control-z>", lambda e: self.undo())
         self.root.bind_all("<Control-y>", lambda e: self.redo())
+        self.root.bind_all("<Control-f>", lambda e: self.open_find_window())
 
     def undo(self):
         try:
@@ -140,6 +143,73 @@ class NotepadApp:
         line, col = idx.split(".")
         chars = len(self.text.get("1.0", "end-1c"))
         self.status.config(text=f"Строка {line}, Столбец {int(col)+1} | Символов: {chars}")
+
+    def open_find_window(self):
+        win = tk.Toplevel(self.root)
+        win.title("Поиск и замена")
+        win.geometry("380x160")
+        win.transient(self.root)
+
+        tk.Label(win, text="Найти:").grid(row=0, column=0, sticky="e", padx=6, pady=6)
+        find_entry = tk.Entry(win, width=30)
+        find_entry.grid(row=0, column=1, padx=6, pady=6)
+        find_entry.focus()
+
+        tk.Label(win, text="Заменить на:").grid(row=1, column=0, sticky="e", padx=6, pady=6)
+        repl_entry = tk.Entry(win, width=30)
+        repl_entry.grid(row=1, column=1, padx=6, pady=6)
+
+        def find_next():
+            self.text.tag_remove("match", "1.0", tk.END)
+            query = find_entry.get()
+            if not query:
+                return
+            start = self.text.index(tk.INSERT)
+            idx = self.text.search(query, start, stopindex=tk.END, nocase=True)
+            if not idx:
+                idx = self.text.search(query, "1.0", stopindex=tk.END, nocase=True)
+            if idx:
+                end = f"{idx}+{len(query)}c"
+                self.text.tag_add("match", idx, end)
+                self.text.tag_config("match", background="#ffcc00", foreground="#000000")
+                self.text.mark_set(tk.INSERT, end)
+                self.text.see(idx)
+            else:
+                messagebox.showinfo("Поиск", "Совпадений не найдено.")
+
+        def replace_one():
+            query = find_entry.get()
+            if not query:
+                return
+            try:
+                sel_start = self.text.index("sel.first")
+                sel_end = self.text.index("sel.last")
+            except tk.TclError:
+                find_next()
+                return
+            if self.text.get(sel_start, sel_end).lower() == query.lower():
+                self.text.delete(sel_start, sel_end)
+                self.text.insert(sel_start, repl_entry.get())
+            find_next()
+
+        def replace_all():
+            query = find_entry.get()
+            if not query:
+                return
+            content = self.text.get("1.0", tk.END)
+            count = content.lower().count(query.lower())
+            if count == 0:
+                messagebox.showinfo("Поиск", "Совпадений не найдено.")
+                return
+            self.text.delete("1.0", tk.END)
+            self.text.insert("1.0", content.replace(query, repl_entry.get()))
+            messagebox.showinfo("Поиск", f"Заменено вхождений: {count}")
+
+        btn_frame = tk.Frame(win)
+        btn_frame.grid(row=2, column=0, columnspan=2, pady=8)
+        tk.Button(btn_frame, text="Найти далее", command=find_next).pack(side=tk.LEFT, padx=4)
+        tk.Button(btn_frame, text="Заменить", command=replace_one).pack(side=tk.LEFT, padx=4)
+        tk.Button(btn_frame, text="Заменить всё", command=replace_all).pack(side=tk.LEFT, padx=4)
 
 
 if __name__ == "__main__":
